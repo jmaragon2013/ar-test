@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunarie AR Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #splash-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            background-color: #ECDFEE;
+            gap: 48px;
+        }
+
+        #splash-screen.hidden {
+            display: none;
+        }
+
+        #logo {
+            max-width: 400px;
+            width: 80%;
+            height: auto;
+        }
+
+        #start-button {
+            background-color: #312731;
+            color: white;
+            border: none;
+            padding: 16px 48px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        #start-button:hover {
+            transform: scale(1.05);
+        }
+
+        #start-button:active {
+            transform: scale(0.95);
+        }
+
+        #camera-container {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background-color: #000;
+        }
+
+        #camera-container.active {
+            display: block;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #error-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(49, 39, 49, 0.95);
+            color: white;
+            padding: 24px 32px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 90%;
+            z-index: 1000;
+        }
+
+        #error-message.show {
+            display: block;
+        }
+
+        #error-message button {
+            margin-top: 16px;
+            background-color: #ECDFEE;
+            color: #312731;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <img id="logo" src="logolunarie.png" alt="Lunarie Logo">
+        <button id="start-button">Iniciar AR</button>
+    </div>
+
+    <!-- Camera Container -->
+    <div id="camera-container">
+        <video id="video" autoplay playsinline></video>
+    </div>
+
+    <!-- Error Message -->
+    <div id="error-message">
+        <p id="error-text"></p>
+        <button id="retry-button">Reintentar</button>
+    </div>
+
+    <script>
+        const splashScreen = document.getElementById('splash-screen');
+        const cameraContainer = document.getElementById('camera-container');
+        const video = document.getElementById('video');
+        const startButton = document.getElementById('start-button');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const retryButton = document.getElementById('retry-button');
+
+        let stream = null;
+
+        async function startCamera() {
+            try {
+                // Request camera access with rear camera preference
+                const constraints = {
+                    video: {
+                        facingMode: { ideal: 'environment' }, // Prefer rear camera
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    },
+                    audio: false
+                };
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // Set video source
+                video.srcObject = stream;
+                
+                // Hide splash screen and show camera
+                splashScreen.classList.add('hidden');
+                cameraContainer.classList.add('active');
+                
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                
+                let message = 'No se pudo acceder a la cámara. ';
+                
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    message += 'Por favor, permite el acceso a la cámara en la configuración de tu navegador.';
+                } else if (error.name === 'NotFoundError') {
+                    message += 'No se encontró ninguna cámara en tu dispositivo.';
+                } else if (error.name === 'NotReadableError') {
+                    message += 'La cámara está siendo usada por otra aplicación.';
+                } else {
+                    message += 'Error: ' + error.message;
+                }
+                
+                showError(message);
+            }
+        }
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+        }
+
+        // Event Listeners
+        startButton.addEventListener('click', () => {
+            hideError();
+            startCamera();
+        });
+
+        retryButton.addEventListener('click', () => {
+            hideError();
+            stopCamera();
+            cameraContainer.classList.remove('active');
+            splashScreen.classList.remove('hidden');
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopCamera();
+        });
+    </script>
+</body>
+</html>
