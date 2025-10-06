@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lunarie AR Demo</title>
+    <!-- Added A-Frame and AR.js libraries -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         * {
             margin: 0;
@@ -27,6 +30,8 @@
             height: 100%;
             background-color: #ECDFEE;
             gap: 48px;
+            position: relative;
+            z-index: 1000;
         }
 
         #splash-screen.hidden {
@@ -59,22 +64,59 @@
             transform: scale(0.95);
         }
 
-        #camera-container {
+        /* Updated AR scene styles */
+        #ar-scene {
             display: none;
             width: 100vw;
             height: 100vh;
-            position: relative;
-            background-color: #000;
         }
 
-        #camera-container.active {
+        #ar-scene.active {
             display: block;
         }
 
-        #video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        /* Added instructions overlay */
+        #instructions {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(49, 39, 49, 0.9);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 999;
+            max-width: 90%;
+            font-size: 14px;
+            display: none;
+        }
+
+        #instructions.show {
+            display: block;
+        }
+
+        /* Added download marker button */
+        #download-marker {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ECDFEE;
+            color: #312731;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            z-index: 999;
+            display: none;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        #download-marker.show {
+            display: block;
         }
 
         #error-message {
@@ -89,7 +131,7 @@
             border-radius: 12px;
             text-align: center;
             max-width: 90%;
-            z-index: 1000;
+            z-index: 1001;
         }
 
         #error-message.show {
@@ -106,6 +148,11 @@
             cursor: pointer;
             font-weight: 600;
         }
+
+        /* Hide A-Frame UI elements */
+        .a-loader-title {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -115,10 +162,39 @@
         <button id="start-button">Iniciar AR</button>
     </div>
 
-    <!-- Camera Container -->
-    <div id="camera-container">
-        <video id="video" autoplay playsinline></video>
+    <!-- Replaced camera container with AR.js scene -->
+    <a-scene
+        id="ar-scene"
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; trackingMethod: best;"
+        vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; precision: medium;"
+    >
+        <!-- Camera -->
+        <a-entity camera></a-entity>
+
+        <!-- Hiro Marker with Flowers -->
+        <a-marker preset="hiro" id="hiro-marker">
+            <!-- Flowers image as AR content, 25% smaller (scale 0.75) -->
+            <a-image 
+                src="flores.jpg" 
+                rotation="-90 0 0" 
+                scale="2 2 2"
+                position="0 0.1 0"
+                opacity="1"
+            ></a-image>
+        </a-marker>
+    </a-scene>
+
+    <!-- Added instructions overlay -->
+    <div id="instructions">
+        Apunta la cámara al marcador Hiro para ver las flores
     </div>
+
+    <!-- Added download marker button -->
+    <a id="download-marker" href="hiro-marker.jpg" download="hiro-marker.jpg">
+        Descargar Marcador Hiro
+    </a>
 
     <!-- Error Message -->
     <div id="error-message">
@@ -128,52 +204,39 @@
 
     <script>
         const splashScreen = document.getElementById('splash-screen');
-        const cameraContainer = document.getElementById('camera-container');
-        const video = document.getElementById('video');
+        const arScene = document.getElementById('ar-scene');
         const startButton = document.getElementById('start-button');
+        const instructions = document.getElementById('instructions');
+        const downloadMarker = document.getElementById('download-marker');
         const errorMessage = document.getElementById('error-message');
         const errorText = document.getElementById('error-text');
         const retryButton = document.getElementById('retry-button');
 
-        let stream = null;
-
-        async function startCamera() {
+        function startAR() {
             try {
-                // Request camera access with rear camera preference
-                const constraints = {
-                    video: {
-                        facingMode: { ideal: 'environment' }, // Prefer rear camera
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    },
-                    audio: false
-                };
-
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                // Set video source
-                video.srcObject = stream;
-                
-                // Hide splash screen and show camera
+                console.log('[v0] Starting AR...');
                 splashScreen.classList.add('hidden');
-                cameraContainer.classList.add('active');
+                arScene.classList.add('active');
+                instructions.classList.add('show');
+                downloadMarker.classList.add('show');
+                
+                const marker = document.querySelector('#hiro-marker');
+                
+                marker.addEventListener('markerFound', () => {
+                    console.log('[v0] Marker detected!');
+                    instructions.textContent = '¡Marcador detectado! Las flores deberían aparecer';
+                    instructions.style.backgroundColor = 'rgba(76, 175, 80, 0.9)';
+                });
+                
+                marker.addEventListener('markerLost', () => {
+                    console.log('[v0] Marker lost');
+                    instructions.textContent = 'Apunta la cámara al marcador Hiro para ver las flores';
+                    instructions.style.backgroundColor = 'rgba(49, 39, 49, 0.9)';
+                });
                 
             } catch (error) {
-                console.error('Error accessing camera:', error);
-                
-                let message = 'No se pudo acceder a la cámara. ';
-                
-                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                    message += 'Por favor, permite el acceso a la cámara en la configuración de tu navegador.';
-                } else if (error.name === 'NotFoundError') {
-                    message += 'No se encontró ninguna cámara en tu dispositivo.';
-                } else if (error.name === 'NotReadableError') {
-                    message += 'La cámara está siendo usada por otra aplicación.';
-                } else {
-                    message += 'Error: ' + error.message;
-                }
-                
-                showError(message);
+                console.error('[v0] Error starting AR:', error);
+                showError('Error al iniciar AR: ' + error.message);
             }
         }
 
@@ -186,29 +249,21 @@
             errorMessage.classList.remove('show');
         }
 
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-        }
-
-        // Event Listeners
         startButton.addEventListener('click', () => {
             hideError();
-            startCamera();
+            startAR();
         });
 
         retryButton.addEventListener('click', () => {
             hideError();
-            stopCamera();
-            cameraContainer.classList.remove('active');
+            arScene.classList.remove('active');
+            instructions.classList.remove('show');
+            downloadMarker.classList.remove('show');
             splashScreen.classList.remove('hidden');
         });
 
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
-            stopCamera();
+        arScene.addEventListener('loaded', () => {
+            console.log('[v0] AR scene loaded successfully');
         });
     </script>
 </body>
