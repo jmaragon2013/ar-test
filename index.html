@@ -1,22 +1,85 @@
+<!doctype html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
-    
+    <style>
+      /* Botón HTML fallback (se muestra si no hay target element o como fallback) */
+      #invitation-button {
+        position: fixed;
+        right: 120px;
+        bottom: 120px;
+        z-index: 1001;
+        background: #312731;
+        color: #ECDFEE;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+        -webkit-tap-highlight-color: transparent;
+      }
+      #invitation-button.hidden { display: none; }
+      #invitation-button:active { transform: translateY(1px); }
+    </style>
   </head>
+
   <body>
     <a-scene mindar-image="imageTargetSrc: assets/targets.mind; filterMinCF:0.0001; filterBeta: 0.001;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
       <a-assets>
-        <a-image id="pareja" src="assets/pareja_ra.png" />
+        <a-image id="pareja" src="assets/pareja_ra.png"></a-image>
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-camera id="camera" position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-image src="#pareja" position="0 0.5 0" height="1" width="1" rotation="0 0 0" opacity="0.9"></a-image>
+      <a-entity mindar-image-target="targetIndex: 0" id="targetEntity">
+        <a-image id="overlayImage" src="#pareja" position="0 0.5 0" height="1" width="1" rotation="0 0 0" opacity="0.95"></a-image>
+
+       
       </a-entity>
     </a-scene>
+
+    <!-- Invitación digital HTML (fallback) -->
+    <a id="invitation-button" class="hidden" href="https://sample.lunarie.es" target="_blank" rel="noopener noreferrer" aria-label="Invitación digital">
+      Invitación digital
+    </a>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const target = document.getElementById('targetEntity');
+        const htmlBtn = document.getElementById('invitation-button');
+        const targetUrl = 'https://sample.lunarie.es';
+
+        // Asegurar que el target esté invisible hasta que se encuentre
+        if (target) {
+          target.setAttribute('visible', 'false');
+          target.addEventListener('targetFound', function () { target.setAttribute('visible', 'true'); });
+          target.addEventListener('targetLost', function () { target.setAttribute('visible', 'false'); });
+        }
+
+        // Mostrar/ocultar botón HTML según detección del target
+        if (htmlBtn) {
+          htmlBtn.classList.add('hidden');
+          if (target) {
+            target.addEventListener('targetFound', function () { htmlBtn.classList.remove('hidden'); });
+            target.addEventListener('targetLost', function () { htmlBtn.classList.add('hidden'); });
+          } else {
+            htmlBtn.classList.remove('hidden');
+          }
+
+          htmlBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const win = window.open(htmlBtn.getAttribute('href'), '_blank');
+            if (!win) window.location.href = htmlBtn.getAttribute('href');
+          });
+        }
+
+      });
+    </script>
   </body>
 </html>
